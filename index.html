@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temple Warning Inscription — Interactive Reader</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=GFS+Didot&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #1a1714;
+    color: #e8e0d4;
+    font-family: 'Noto Serif', 'Georgia', serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .page {
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto;
+    height: 100vh;
+    padding: 12px 24px 10px;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 0;
+  }
+
+  /* ---- HEADER ---- */
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 16px;
+    padding-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #c9a96e;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .subtitle {
+    font-size: 0.78em;
+    color: #6a6050;
+    font-style: italic;
+    white-space: nowrap;
+  }
+
+  /* ---- CONTROLS ---- */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 4px 0 6px;
+    flex-wrap: nowrap;
+  }
+
+  .play-btn {
+    background: linear-gradient(135deg, #c9a96e, #a8863a);
+    color: #1a1714;
+    border: none;
+    padding: 6px 20px;
+    font-size: 0.85em;
+    font-family: 'Noto Serif', serif;
+    font-weight: 700;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+
+  .play-btn:hover { box-shadow: 0 2px 10px rgba(201,169,110,0.3); }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #7a6e5e;
+    font-size: 0.78em;
+  }
+
+  .speed-control input[type="range"] { width: 60px; accent-color: #c9a96e; }
+
+  select.voice-select {
+    background: #2a2520;
+    color: #c9a96e;
+    border: 1px solid #3a3530;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-family: 'Noto Serif', serif;
+    max-width: 200px;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: #2a2520;
+    border-radius: 1px;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #c9a96e, #e8c880);
+    transition: width 0.3s;
+  }
+
+  /* ---- MAIN 2x2 GRID ---- */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+    align-content: start;
+    min-height: 0;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .panel-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.68em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #5e5648;
+    margin-bottom: 5px;
+    flex-shrink: 0;
+  }
+
+  .panel-body {
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 5px;
+  }
+
+  /* layout-box should also match inscription height */
+  .layout-box {
+    height: 100%;
+  }
+
+  /* ---- INSCRIPTION (stone) ---- */
+  .inscription-box {
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(180,160,120,0.12), transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(140,120,80,0.08), transparent 50%),
+      linear-gradient(180deg, #6b6254 0%, #7a7264 15%, #6e6658 40%, #756d5f 60%, #6b6354 85%, #5e5648 100%);
+    padding: 20px 16px;
+    text-align: center;
+    position: relative;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .inscription-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: 5px;
+  }
+
+  .inscription-line {
+    font-family: 'GFS Didot', 'Times New Roman', serif;
+    font-size: clamp(0.82em, 1.7vw, 1.15em);
+    letter-spacing: 0.04em;
+    line-height: 1.55;
+    color: #a03020;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5), 0 -1px 0 rgba(255,255,255,0.06);
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+  }
+
+  .word-frag {
+    cursor: pointer;
+    padding: 1px 0;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .word-frag.active {
+    background: rgba(255, 200, 60, 0.35);
+    text-shadow: 0 0 10px rgba(255,200,60,0.6), 0 1px 1px rgba(0,0,0,0.5);
+    color: #d04030;
+  }
+
+  /* ---- LAYOUT TEXT ---- */
+  .layout-box {
+    background: #201d19;
+    border: 1px solid #332e28;
+    padding: 12px 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .layout-line {
+    font-family: 'GFS Didot', 'Times New Roman', serif;
+    font-size: clamp(0.78em, 1.5vw, 1.0em);
+    letter-spacing: 0.06em;
+    line-height: 1.55;
+    color: #a89878;
+  }
+
+  .word-part {
+    cursor: pointer;
+    padding: 1px 3px;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .word-part.active {
+    background: rgba(201,169,110,0.25);
+    color: #e8d4a0;
+    text-shadow: 0 0 6px rgba(201,169,110,0.4);
+  }
+
+  .layout-dash { color: #5a5040; }
+  .layout-space { display: inline-block; width: 0.5em; }
+
+  /* ---- NORMALIZED GREEK ---- */
+  .normalized-box {
+    background: #201d19;
+    border: 1px solid #332e28;
+    padding: 16px 20px;
+    font-family: 'GFS Didot', 'Noto Serif', serif;
+    font-size: clamp(0.95em, 1.5vw, 1.15em);
+    line-height: 1.8;
+    color: #a89878;
+  }
+
+  .normalized-box .word {
+    cursor: pointer;
+    padding: 1px 2px;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .normalized-box .word.active {
+    background: rgba(201,169,110,0.25);
+    color: #e8d4a0;
+    text-shadow: 0 0 6px rgba(201,169,110,0.4);
+  }
+
+  /* ---- ENGLISH ---- */
+  .english-box {
+    background: #201d19;
+    border: 1px solid #332e28;
+    padding: 16px 20px;
+    font-family: 'Noto Serif', serif;
+    font-size: clamp(0.95em, 1.5vw, 1.15em);
+    line-height: 1.8;
+    color: #8a8070;
+  }
+
+  .eng-word {
+    cursor: pointer;
+    padding: 1px 2px;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .eng-word.active {
+    background: rgba(140,180,220,0.2);
+    color: #c8d8e8;
+    text-shadow: 0 0 6px rgba(140,180,220,0.3);
+  }
+
+  /* ---- CONNECTOR LINES (visual arrows) ---- */
+  .row-pair {
+    display: contents;
+  }
+
+  .connector-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3a3530;
+    font-size: 1.2em;
+    user-select: none;
+  }
+
+  /* ---- WORD INFO TOOLTIP ---- */
+  .word-info {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2a2520;
+    border: 1px solid #4a4035;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 0.8em;
+    color: #c9a96e;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .word-info.visible { opacity: 1; }
+
+  /* ---- VOICE MSG ---- */
+  .voice-msg {
+    text-align: center;
+    padding: 4px 12px;
+    font-size: 0.72em;
+    color: #7a6e5e;
+    display: none;
+  }
+
+  .voice-msg.visible { display: block; }
+
+  /* ---- ARROW ICON between columns ---- */
+  .arrow-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #3a3530;
+    font-size: 1.4em;
+    padding: 0 2px;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="header">
+    <h1>The Temple Warning Inscription</h1>
+    <span class="subtitle">Herod's Temple, Jerusalem — 1st c. BCE</span>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
+    <button class="play-btn" onclick="stopPlay()">&#9632; Stop</button>
+    <div class="speed-control">
+      <label>Speed</label>
+      <input type="range" id="speedRange" min="0.5" max="1.5" step="0.1" value="0.8">
+      <span id="speedVal">0.8×</span>
+    </div>
+    <select class="voice-select" id="voiceSelect"><option>Loading voices…</option></select>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="voice-msg" id="voiceMsg"></div>
+
+  <!-- MAIN 2-COLUMN GRID -->
+  <div class="main-grid">
+    <!-- ROW 1 LEFT: Stone inscription -->
+    <div class="panel" style="grid-row:1;grid-column:1;">
+      <div class="panel-label">Inscription</div>
+      <div class="panel-body">
+        <div class="inscription-box" id="inscriptionBox"></div>
+      </div>
+    </div>
+
+    <!-- ROW 1 RIGHT: Layout transcription -->
+    <div class="panel" style="grid-row:1;grid-column:2;">
+      <div class="panel-label">Transcription (word breaks shown)</div>
+      <div class="panel-body">
+        <div class="layout-box" id="layoutBox"></div>
+      </div>
+    </div>
+
+    <!-- ROW 2 LEFT: Normalized Greek -->
+    <div class="panel" style="grid-row:2;grid-column:1;">
+      <div class="panel-label">Normalized Greek</div>
+      <div class="panel-body">
+        <div class="normalized-box" id="normalizedBox"></div>
+      </div>
+    </div>
+
+    <!-- ROW 2 RIGHT: English -->
+    <div class="panel" style="grid-row:2;grid-column:2;">
+      <div class="panel-label">English Translation</div>
+      <div class="panel-body">
+        <div class="english-box" id="englishBox"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="word-info" id="wordInfo"></div>
+
+<script>
+// ==============================================
+// DATA
+// ==============================================
+const WORDS = [
+  { id:0,  caps:'ΜΗΘΕΝΑ',         normalized:'Μηθένα',          speak:'Μηθένα',          english:'No',
+    frags:[{line:0,text:'ΜΗΘΕΝΑ'}], layoutFrags:[{line:0,text:'ΜΗΘΕΝΑ',dash:false}] },
+  { id:1,  caps:'ΑΛΛΟΓΕΝΗ',       normalized:'ἀλλογενῆ',        speak:'αλλογενή',        english:'foreigner',
+    frags:[{line:0,text:'ΑΛΛΟΓΕΝΗ'}], layoutFrags:[{line:0,text:'ΑΛΛΟΓΕΝΗ',dash:false}] },
+  { id:2,  caps:'ΕΙΣΠΟΡΕΥΕΣΘΑΙ',  normalized:'εἰσπορεύεσθαι',   speak:'εισπορεύεσθαι',   english:'is to enter',
+    frags:[{line:0,text:'ΕΙΣΠΟ'},{line:1,text:'ΡΕΥΕΣΘΑΙ'}],
+    layoutFrags:[{line:0,text:'ΕΙΣΠΟ',dash:true},{line:1,text:'ΡΕΥΕΣΘΑΙ',dash:false}] },
+  { id:3,  caps:'ΕΝΤΟΣ',          normalized:'ἐντὸς',            speak:'εντός',            english:'within',
+    frags:[{line:1,text:'ΕΝΤΟΣ'}], layoutFrags:[{line:1,text:'ΕΝΤΟΣ',dash:false}] },
+  { id:4,  caps:'ΤΟΥ',            normalized:'τοῦ',              speak:'του',              english:'the',
+    frags:[{line:1,text:'ΤΟΥ'}], layoutFrags:[{line:1,text:'ΤΟΥ',dash:false}] },
+  { id:5,  caps:'ΠΕΡΙ',           normalized:'περὶ',              speak:'περί',             english:'around',
+    frags:[{line:1,text:'ΠΕ'},{line:2,text:'ΡΙ'}],
+    layoutFrags:[{line:1,text:'ΠΕ',dash:true},{line:2,text:'ΡΙ',dash:false}] },
+  { id:6,  caps:'ΤΟ',             normalized:'τὸ',               speak:'το',               english:'the',
+    frags:[{line:2,text:'ΤΟ'}], layoutFrags:[{line:2,text:'ΤΟ',dash:false}] },
+  { id:7,  caps:'ΙΕΡΟΝ',          normalized:'ἱερὸν',             speak:'ιερόν',            english:'sanctuary',
+    frags:[{line:2,text:'ΙΕΡΟΝ'}], layoutFrags:[{line:2,text:'ΙΕΡΟΝ',dash:false}] },
+  { id:8,  caps:'ΤΡΥΦΑΚΤΟΥ',      normalized:'τρυφάκτου',         speak:'τρυφάκτου',        english:'balustrade',
+    frags:[{line:2,text:'ΤΡΥΦΑΚΤΟΥ'}], layoutFrags:[{line:2,text:'ΤΡΥΦΑΚΤΟΥ',dash:false}] },
+  { id:9,  caps:'ΚΑΙ',            normalized:'καὶ',               speak:'και',              english:'and',
+    frags:[{line:2,text:'ΚΑΙ'}], layoutFrags:[{line:2,text:'ΚΑΙ',dash:false}] },
+  { id:10, caps:'ΠΕΡΙΒΟΛΟΥ',      normalized:'περιβόλου.',         speak:'περιβόλου',        english:'enclosure.',
+    frags:[{line:3,text:'ΠΕΡΙΒΟΛΟΥ'}], layoutFrags:[{line:3,text:'ΠΕΡΙΒΟΛΟΥ',dash:false}] },
+  { id:11, caps:'ΟΣ',             normalized:'Ὃς',                speak:'Ος',               english:'Whoever',
+    frags:[{line:3,text:'ΟΣ'}], layoutFrags:[{line:3,text:'ΟΣ',dash:false}] },
+  { id:12, caps:'Δ',              normalized:"δ'",                speak:'δε',               english:'',
+    frags:[{line:3,text:'Δ'}], layoutFrags:[{line:3,text:'Δ',dash:false}] },
+  { id:13, caps:'ΑΝ',             normalized:'ἂν',                speak:'αν',               english:'',
+    frags:[{line:3,text:'ΑΝ'}], layoutFrags:[{line:3,text:'ΑΝ',dash:false}] },
+  { id:14, caps:'ΛΗΦΘΗ',          normalized:'ληφθῇ,',            speak:'ληφθή',            english:'is caught,',
+    frags:[{line:3,text:'ΛΗ'},{line:4,text:'ΦΘΗ'}],
+    layoutFrags:[{line:3,text:'ΛΗ',dash:true},{line:4,text:'ΦΘΗ',dash:false}] },
+  { id:15, caps:'ΕΑΥΤΩΙ',         normalized:'ἑαυτῷ',             speak:'εαυτώ',            english:'himself',
+    frags:[{line:4,text:'ΕΑΥΤΩΙ'}], layoutFrags:[{line:4,text:'ΕΑΥΤΩΙ',dash:false}] },
+  { id:16, caps:'ΑΙΤΙΟΣ',         normalized:'αἴτιος',             speak:'αίτιος',           english:'to blame',
+    frags:[{line:4,text:'ΑΙΤΙΟΣ'}], layoutFrags:[{line:4,text:'ΑΙΤΙΟΣ',dash:false}] },
+  { id:17, caps:'ΕΣΤΑΙ',          normalized:'ἔσται',              speak:'έσται',            english:'will be',
+    frags:[{line:4,text:'ΕΣ'},{line:5,text:'ΤΑΙ'}],
+    layoutFrags:[{line:4,text:'ΕΣ',dash:true},{line:5,text:'ΤΑΙ',dash:false}] },
+  { id:18, caps:'ΔΙΑ',            normalized:'διὰ',                speak:'δια',              english:'for',
+    frags:[{line:5,text:'ΔΙΑ'}], layoutFrags:[{line:5,text:'ΔΙΑ',dash:false}] },
+  { id:19, caps:'ΤΟ',             normalized:'τὸ',                 speak:'το',               english:'the',
+    frags:[{line:5,text:'ΤΟ'}], layoutFrags:[{line:5,text:'ΤΟ',dash:false}] },
+  { id:20, caps:'ΕΞΑΚΟΛΟΥΘΕΙΝ',   normalized:'ἐξακολουθεῖν',       speak:'εξακολουθείν',     english:'ensuing',
+    frags:[{line:5,text:'ΕΞΑΚΟΛΟΥ'},{line:6,text:'ΘΕΙΝ'}],
+    layoutFrags:[{line:5,text:'ΕΞΑΚΟΛΟΥ',dash:true},{line:6,text:'ΘΕΙΝ',dash:false}] },
+  { id:21, caps:'ΘΑΝΑΤΟΝ',        normalized:'θάνατον.',            speak:'θάνατον',          english:'death.',
+    frags:[{line:6,text:'ΘΑΝΑΤΟΝ'}], layoutFrags:[{line:6,text:'ΘΑΝΑΤΟΝ',dash:false}] }
+];
+
+const NUM_LINES = 7;
+
+// ==============================================
+// BUILD DOM
+// ==============================================
+
+function addWordListeners(el, wordId) {
+  el.addEventListener('click', () => speakSingleWord(wordId));
+  el.addEventListener('mouseenter', () => showWordInfo(wordId));
+  el.addEventListener('mouseleave', hideWordInfo);
+}
+
+function buildInscription() {
+  const box = document.getElementById('inscriptionBox');
+  const lines = Array.from({length:NUM_LINES}, () => []);
+  WORDS.forEach(w => w.frags.forEach(f => lines[f.line].push({wordId:w.id, text:f.text})));
+
+  lines.forEach(lineItems => {
+    const div = document.createElement('div');
+    div.className = 'inscription-line';
+    lineItems.forEach(item => {
+      const span = document.createElement('span');
+      span.className = 'word-frag';
+      span.dataset.wordId = item.wordId;
+      span.textContent = item.text;
+      addWordListeners(span, item.wordId);
+      div.appendChild(span);
+    });
+    box.appendChild(div);
+  });
+}
+
+function buildLayout() {
+  const box = document.getElementById('layoutBox');
+  const lines = Array.from({length:NUM_LINES}, () => []);
+  WORDS.forEach(w => w.layoutFrags.forEach(f => lines[f.line].push({wordId:w.id, text:f.text, dash:f.dash})));
+
+  lines.forEach(lineItems => {
+    const div = document.createElement('div');
+    div.className = 'layout-line';
+    lineItems.forEach((item, idx) => {
+      if (idx > 0) {
+        const sp = document.createElement('span');
+        sp.className = 'layout-space';
+        sp.innerHTML = ' ';
+        div.appendChild(sp);
+      }
+      const span = document.createElement('span');
+      span.className = 'word-part';
+      span.dataset.wordId = item.wordId;
+      span.textContent = item.text;
+      addWordListeners(span, item.wordId);
+      div.appendChild(span);
+      if (item.dash) {
+        const d = document.createElement('span');
+        d.className = 'layout-dash';
+        d.textContent = '-';
+        div.appendChild(d);
+      }
+    });
+    box.appendChild(div);
+  });
+}
+
+function buildNormalized() {
+  const box = document.getElementById('normalizedBox');
+  WORDS.forEach((w, i) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.dataset.wordId = w.id;
+    span.textContent = w.normalized;
+    addWordListeners(span, w.id);
+    box.appendChild(span);
+    if (i < WORDS.length - 1) box.appendChild(document.createTextNode(' '));
+  });
+}
+
+function buildEnglish() {
+  const box = document.getElementById('englishBox');
+  WORDS.forEach(w => {
+    if (!w.english) return;
+    const span = document.createElement('span');
+    span.className = 'eng-word';
+    span.dataset.wordId = w.id;
+    span.textContent = w.english;
+    addWordListeners(span, w.id);
+    box.appendChild(span);
+    box.appendChild(document.createTextNode(' '));
+  });
+}
+
+// ==============================================
+// HIGHLIGHTING
+// ==============================================
+
+function clearAllHighlights() {
+  document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+}
+
+function highlightWord(wordId) {
+  clearAllHighlights();
+  document.querySelectorAll(`[data-word-id="${wordId}"]`).forEach(el => el.classList.add('active'));
+  document.getElementById('progressFill').style.width = ((wordId + 1) / WORDS.length * 100) + '%';
+}
+
+// ==============================================
+// SPEECH
+// ==============================================
+
+let voices = [], selectedVoice = null, isPlaying = false, currentWordIndex = 0, shouldStop = false;
+
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  const select = document.getElementById('voiceSelect');
+  select.innerHTML = '';
+
+  const greekVoices = voices.filter(v => v.lang.startsWith('el'));
+  const pool = greekVoices.length > 0 ? greekVoices : voices;
+
+  if (greekVoices.length === 0 && voices.length > 0) {
+    const m = document.getElementById('voiceMsg');
+    m.textContent = 'No Greek voice found — use Chrome for Google\'s neural Greek voice. Showing all voices.';
+    m.classList.add('visible');
+  }
+
+  const sorted = [...pool].sort((a, b) => {
+    const s = v => (v.name.includes('Google')?3:0) + (v.name.includes('Microsoft')?2:0) + (v.lang.startsWith('el')?5:0);
+    return s(b) - s(a);
+  });
+
+  sorted.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})${v.name.includes('Google')?' ★':''}`;
+    opt.voiceObj = v;
+    select.appendChild(opt);
+  });
+
+  if (sorted.length > 0) selectedVoice = sorted[0];
+
+  select.onchange = () => {
+    const idx = select.selectedIndex;
+    if (idx >= 0) selectedVoice = select.options[idx].voiceObj;
+  };
+}
+
+speechSynthesis.addEventListener('voiceschanged', loadVoices);
+setTimeout(loadVoices, 100);
+setTimeout(loadVoices, 600);
+setTimeout(loadVoices, 1500);
+
+function getSpeed() { return parseFloat(document.getElementById('speedRange').value); }
+
+document.getElementById('speedRange').addEventListener('input', function() {
+  document.getElementById('speedVal').textContent = this.value + '×';
+});
+
+function speakWord(wordId) {
+  return new Promise(resolve => {
+    const w = WORDS[wordId];
+    highlightWord(wordId);
+
+    if (w.speak.length <= 1) {
+      setTimeout(resolve, 320 / getSpeed());
+      return;
+    }
+
+    const u = new SpeechSynthesisUtterance(w.speak);
+    if (selectedVoice) u.voice = selectedVoice;
+    u.lang = 'el-GR';
+    u.rate = getSpeed();
+    u.pitch = 1.0;
+    u.onend = () => setTimeout(resolve, 160 / getSpeed());
+    u.onerror = () => setTimeout(resolve, 250);
+    speechSynthesis.speak(u);
+  });
+}
+
+async function playAll() {
+  isPlaying = true;
+  shouldStop = false;
+  document.getElementById('playBtn').innerHTML = '&#10074;&#10074; Pause';
+
+  for (let i = currentWordIndex; i < WORDS.length; i++) {
+    if (shouldStop) break;
+    currentWordIndex = i;
+    await speakWord(i);
+  }
+
+  if (!shouldStop) {
+    currentWordIndex = 0;
+    document.getElementById('progressFill').style.width = '100%';
+    setTimeout(() => { clearAllHighlights(); document.getElementById('progressFill').style.width = '0%'; }, 1200);
+  }
+
+  isPlaying = false;
+  document.getElementById('playBtn').innerHTML = '&#9654; Play';
+}
+
+function togglePlay() {
+  if (isPlaying) {
+    shouldStop = true;
+    speechSynthesis.cancel();
+    isPlaying = false;
+    document.getElementById('playBtn').innerHTML = '&#9654; Play';
+  } else {
+    playAll();
+  }
+}
+
+function stopPlay() {
+  shouldStop = true;
+  speechSynthesis.cancel();
+  isPlaying = false;
+  currentWordIndex = 0;
+  clearAllHighlights();
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('playBtn').innerHTML = '&#9654; Play';
+}
+
+function speakSingleWord(wordId) {
+  speechSynthesis.cancel();
+  highlightWord(wordId);
+  const u = new SpeechSynthesisUtterance(WORDS[wordId].speak);
+  if (selectedVoice) u.voice = selectedVoice;
+  u.lang = 'el-GR';
+  u.rate = getSpeed();
+  speechSynthesis.speak(u);
+  u.onend = () => setTimeout(clearAllHighlights, 600);
+}
+
+// ==============================================
+// TOOLTIP
+// ==============================================
+
+function showWordInfo(wordId) {
+  const w = WORDS[wordId];
+  const info = document.getElementById('wordInfo');
+  let t = `${w.caps}  →  ${w.normalized}`;
+  if (w.english) t += `  →  "${w.english}"`;
+  info.textContent = t;
+  info.classList.add('visible');
+}
+
+function hideWordInfo() {
+  document.getElementById('wordInfo').classList.remove('visible');
+}
+
+// ==============================================
+// INIT
+// ==============================================
+
+buildInscription();
+buildLayout();
+buildNormalized();
+buildEnglish();
+</script>
+</body>
+</html>
