@@ -52,6 +52,25 @@
     white-space: nowrap;
   }
 
+  .wiki-link {
+    font-size: 0.78em;
+    color: #8fa9c6;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .wiki-link:hover {
+    color: #b8cee7;
+    border-bottom-color: #b8cee7;
+  }
+
+  .preview-active {
+    background: rgba(201,169,110,0.18) !important;
+    color: #f0dfb3 !important;
+    text-shadow: 0 0 6px rgba(201,169,110,0.28);
+  }
+
   /* ---- CONTROLS ---- */
   .controls {
     display: flex;
@@ -352,6 +371,7 @@
   <div class="header">
     <h1>The Temple Warning Inscription</h1>
     <span class="subtitle">Herod's Temple, Jerusalem — 1st c. BCE</span>
+    <a class="wiki-link" href="https://en.wikipedia.org/wiki/Temple_Warning_inscription" target="_blank" rel="noopener noreferrer">Wikipedia</a>
   </div>
 
   <!-- CONTROLS -->
@@ -471,9 +491,21 @@ const NUM_LINES = 7;
 // ==============================================
 
 function addWordListeners(el, wordId) {
-  el.addEventListener('click', () => speakSingleWord(wordId));
-  el.addEventListener('mouseenter', () => showWordInfo(wordId));
-  el.addEventListener('mouseleave', hideWordInfo);
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!isPlaying) speakSingleWord(wordId);
+  });
+  el.addEventListener('mouseenter', () => {
+    showWordInfo(wordId);
+    if (!isPlaying) previewWord(wordId);
+  });
+  el.addEventListener('mouseleave', () => {
+    hideWordInfo();
+    if (!isPlaying) clearPreviewHighlights();
+  });
+  el.addEventListener('touchstart', () => {
+    if (!isPlaying) previewWord(wordId);
+  }, { passive: true });
 }
 
 function buildInscription() {
@@ -559,13 +591,27 @@ function buildEnglish() {
 // HIGHLIGHTING
 // ==============================================
 
+function clearPreviewHighlights() {
+  document.querySelectorAll('.preview-active').forEach(el => el.classList.remove('preview-active'));
+}
+
 function clearAllHighlights() {
   document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+  clearPreviewHighlights();
+}
+
+function applyHighlightClass(wordId, className) {
+  document.querySelectorAll(`[data-word-id="${wordId}"]`).forEach(el => el.classList.add(className));
+}
+
+function previewWord(wordId) {
+  clearPreviewHighlights();
+  applyHighlightClass(wordId, 'preview-active');
 }
 
 function highlightWord(wordId) {
   clearAllHighlights();
-  document.querySelectorAll(`[data-word-id="${wordId}"]`).forEach(el => el.classList.add('active'));
+  applyHighlightClass(wordId, 'active');
   document.getElementById('progressFill').style.width = ((wordId + 1) / WORDS.length * 100) + '%';
 }
 
@@ -692,7 +738,10 @@ function speakSingleWord(wordId) {
   u.lang = 'el-GR';
   u.rate = getSpeed();
   speechSynthesis.speak(u);
-  u.onend = () => setTimeout(clearAllHighlights, 600);
+  u.onend = () => setTimeout(() => {
+    clearAllHighlights();
+    document.getElementById('progressFill').style.width = '0%';
+  }, 600);
 }
 
 // ==============================================
